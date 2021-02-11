@@ -3,30 +3,58 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const ejs = require('ejs');
 const axios = require('axios');
-
 const app = express();
 
+var path = require('path');
 app.use(express.static('public'));
+app.use(express.static(path.join(__dirname + '/public')));
+app.engine('html', require('ejs').renderFile);
 app.set('view engine', 'ejs');
-app.use(bodyParser.urlencoded({extended: true}));
+app.set('views', __dirname);
+app.use(bodyParser.urlencoded({ extended: true }));
 
-app.get('/',(req, res)=>{
-    //SECRET=58ce3896d1ad4888abe1263ebdab7bd3
-    let urlName =`https://api.spoonacular.com/recipes/random/?apikey=${process.env.SECRET}`;
-            axios.get(urlName).then(function(response){
-                let recipesArr;
-                recipesArr = response.data.recipes[0];
-                console.log(recipesArr.analyzedInstructions[0].steps[0].ingredients); 
-                res.render('recipes', {rec: recipesArr});
-           /* recipesArr = response.data.recipes[0].title;
-            recipesJmg = response.data.recipes[0].image;
-            recipesIngredients = response.data.recipes[0].analyzedInstructions[0].steps[0].ingredients;*/
+const SECRET = process.env.SECRET;
+
+app.get('/', function (req, res) {
+    axios.get('https://api.spoonacular.com/recipes/random/?apiKey=' + SECRET)
+
+        .then(function (response) {
+            recipes = response.data.recipes[0];
+
+            let name = recipes.title;
+
+            let ingredients = recipes.extendedIngredients;
+            var length = ingredients.length;
+            const myArray = [];
+
+            for (i = 0; i < length; i++) {
+                let ingredients1 = recipes.extendedIngredients[i].name;
+                let ingredients2 = recipes.extendedIngredients[i].amount;
+                let ingredients3 = recipes.extendedIngredients[i].unit;
+
+                if (ingredients3 != 0) {
+                    myArray.push(" " + ingredients1 + " - " + ingredients2 + " " + ingredients3);
+                } else {
+                    myArray.push(" " + ingredients2 + " " + ingredients1);
+                }
+            };
+
+            var regex = /(<([^>]+)>)/ig
+                , body1 = recipes.summary
+                , summary = body1.replace(regex, "")
+                , body2 = recipes.instructions
+                , Instructions = body2.replace(regex, "");
+
+            let Image = recipes.image;
+
+            res.render('recipes', { name: name, myArray: myArray, summary: summary, Instructions: Instructions, Image: Image });
         })
-        .catch(function(error){
+        .catch(function (error) {
             console.log(error);
         });
-           
-});
+
+})
+
 
 app.listen(5000,()=>{
     console.log('Server is running on port 5000');
